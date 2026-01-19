@@ -1,50 +1,41 @@
 import telebot
 from datetime import datetime
 
-# --- الإعدادات ---
-TOKEN = "8518076756:AAE8yCWwRAwdqtErUnRoQQv05wzi53DSX-o"
-CHANNEL_ID = "@اسم_قناتك" # <--- غير هذا المعرف لاسم قناتك الحقيقي (مثلاً @my_channel)
+# 1. التوكن الخاص ببوتك (تأكد من وضعه بشكل صحيح)
+API_TOKEN = 'ضع_هنا_توكن_بوتك_القديم'
 
-bot = telebot.TeleBot(TOKEN)
+# 2. آيدي المدير (تم تحديثه برقمك الجديد)
+ADMIN_ID = 7478085292  
 
-# دالة التأكد من الاشتراك
-def is_subscribed(user_id):
-    try:
-        # إذا كان البوت أدمن بالقناة سيستطيع فحص المشتركين
-        status = bot.get_chat_member(CHANNEL_ID, user_id).status
-        return status in ['member', 'administrator', 'creator']
-    except:
-        # في حال حدوث خطأ بالفحص (مثلاً البوت ليس أدمن)، سيسمح للمستخدم بالدخول لضمان العمل
-        return True
+bot = telebot.TeleBot(API_TOKEN)
 
 @bot.message_handler(commands=['start'])
-def start(message):
+def send_welcome(message):
+    user_name = message.from_user.first_name
     user_id = message.from_user.id
-    if is_subscribed(user_id):
-        bot.reply_to(message, "أهلاً بك! أنا بوت حساب العمر. 🎂\nأرسل تاريخ ميلادك الآن بهذا الشكل: سنة/شهر/يوم\nمثلاً: 1998/05/15")
-    else:
-        bot.reply_to(message, f"⚠️ عذراً! يجب عليك الاشتراك في القناة أولاً لتتمكن من استخدام البوت:\n{CHANNEL_ID}\n\nبعد الاشتراك، أرسل /start")
-
-@bot.message_handler(func=lambda m: True)
-def calculate(message):
-    user_id = message.from_user.id
-    # التأكد من الاشتراك قبل كل عملية
-    if not is_subscribed(user_id):
-        bot.reply_to(message, f"❌ توقف! اشترك بالقناة أولاً:\n{CHANNEL_ID}")
-        return
-
+    
+    # رسالة ترحيب للمستخدم
+    bot.reply_to(message, f"أهلاً بك يا {user_name}! أرسل تاريخ ميلادك بهذا الشكل (يوم-شهر-سنة) لأحسب عمرك.\nمثال: 15-05-1995")
+    
+    # إشعار يصلك أنت فقط كمدير عند دخول أي شخص
     try:
-        # معالجة التاريخ المرسل
-        birth_date = datetime.strptime(message.text, "%Y/%m/%d")
-        today = datetime.now()
+        bot.send_message(ADMIN_ID, f"🔔 مستخدم جديد دخل للبوت!\nالاسم: {user_name}\nالآيدي: {user_id}")
+    except Exception as e:
+        print(f"خطأ في إرسال إشعار للمدير: {e}")
+
+@bot.message_handler(func=lambda message: True)
+def calculate_age(message):
+    try:
+        # تحويل النص إلى تاريخ
+        birth_date = datetime.strptime(message.text, '%d-%m-%Y')
+        today = datetime.today()
         
-        # معادلة حساب العمر بدقة
+        # حساب العمر
         age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
         
         bot.reply_to(message, f"عمرك الآن هو: {age} سنة. 🎉")
-    except:
-        bot.reply_to(message, "خطأ في التنسيق! أرسل التاريخ هكذا: سنة/شهر/يوم\nمثلاً: 2000/01/01")
+    except ValueError:
+        bot.reply_to(message, "❌ خطأ في التنسيق! يرجى إرسال التاريخ هكذا: يوم-شهر-سنة (مثال: 10-02-1990)")
 
-# تشغيل البوت
-print("البوت بدأ العمل بنجاح...")
+print("البوت المطور بدأ العمل بنجاح...")
 bot.infinity_polling()
